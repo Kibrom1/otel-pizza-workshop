@@ -29,7 +29,7 @@ const drivers = [
 const SIZE_RANK = {
   Small: 1,
   Medium: 2,
-  large: 3
+  Large: 3
 };
 
 // Find nearest available driver whose bag fits this pizza
