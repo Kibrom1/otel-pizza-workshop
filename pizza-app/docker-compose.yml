@@ -21,6 +21,7 @@ x-dash0-telemetry: &dash0-telemetry
   OTEL_TRACES_EXPORTER: otlp
   OTEL_METRICS_EXPORTER: otlp
   OTEL_LOGS_EXPORTER: otlp
+  OTEL_NODE_DISABLED_INSTRUMENTATIONS: fs,net,dns
   OTEL_RESOURCE_ATTRIBUTES: service.namespace=pizza-app,service.version=1.0.0,deployment.environment.name=${DASH0_ENVIRONMENT:-workshop},vcs.repository.url.full=https://github.com/Kibrom1/otel-pizza-workshop
 
 services:
