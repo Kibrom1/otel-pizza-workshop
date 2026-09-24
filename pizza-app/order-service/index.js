@@ -78,11 +78,37 @@ app.post('/order', async (req, res) => {
     });
     
   } catch (error) {
-    logger.error({ orderId, err: error }, 'Error processing order');
-    res.status(500).json({ 
+    const upstreamUrl = error.config?.url;
+    const upstreamStatus = error.response?.status;
+    const upstreamBody = error.response?.data;
+
+    logger.error({
+      orderId,
+      err: error,
+      upstreamUrl,
+      upstreamStatus,
+      upstreamError: upstreamBody?.error
+    }, 'Error processing order');
+
+    if (upstreamStatus) {
+      return res.status(upstreamStatus).json({
+        error: upstreamBody?.error || 'Failed to process order',
+        orderId,
+        message: upstreamBody?.message,
+        upstream: {
+          url: upstreamUrl,
+          status: upstreamStatus
+        }
+      });
+    }
+
+    res.status(500).json({
       error: 'Failed to process order',
       orderId,
-      details: error.message 
+      details: error.message,
+      upstream: {
+        url: upstreamUrl
+      }
     });
   }
 });
