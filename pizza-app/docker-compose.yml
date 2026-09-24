@@ -7,6 +7,22 @@
 #     cp .env.template .env
 #
 # An `.env` anywhere else (the repo root, for example) is NOT read.
+#
+# Telemetry: each Node service starts with the OpenTelemetry auto
+# instrumentation loaded (see the `start` script in its package.json) and
+# exports traces, metrics and logs straight to Dash0 using the OTEL_*
+# variables below. Without DASH0_ENDPOINT and DASH0_AUTH_TOKEN the app still
+# runs; the exporters just log that they cannot reach a collector.
+
+x-dash0-telemetry: &dash0-telemetry
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${DASH0_ENDPOINT:-}
+  OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
+  OTEL_EXPORTER_OTLP_HEADERS: Authorization=Bearer ${DASH0_AUTH_TOKEN:-},Dash0-Dataset=${DASH0_DATASET:-default}
+  OTEL_TRACES_EXPORTER: otlp
+  OTEL_METRICS_EXPORTER: otlp
+  OTEL_LOGS_EXPORTER: otlp
+  OTEL_NODE_DISABLED_INSTRUMENTATIONS: fs,net,dns
+  OTEL_RESOURCE_ATTRIBUTES: service.namespace=pizza-app,service.version=1.0.0,deployment.environment.name=${DASH0_ENVIRONMENT:-workshop},vcs.repository.url.full=https://github.com/Kibrom1/otel-pizza-workshop
 
 services:
   order-service:
@@ -14,8 +30,10 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - KITCHEN_SERVICE_URL=http://kitchen-service:3001
-      - DELIVERY_SERVICE_URL=http://delivery-service:3002
+      <<: *dash0-telemetry
+      OTEL_SERVICE_NAME: order-service
+      KITCHEN_SERVICE_URL: http://kitchen-service:3001
+      DELIVERY_SERVICE_URL: http://delivery-service:3002
     healthcheck:
       test:
         - CMD
@@ -37,7 +55,9 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - SLOW_KITCHEN=${SLOW_KITCHEN:-false}
+      <<: *dash0-telemetry
+      OTEL_SERVICE_NAME: kitchen-service
+      SLOW_KITCHEN: ${SLOW_KITCHEN:-false}
     healthcheck:
       test:
         - CMD
@@ -54,7 +74,9 @@ services:
     ports:
       - "3002:3002"
     environment:
-      - NO_DRIVERS=${NO_DRIVERS:-false}
+      <<: *dash0-telemetry
+      OTEL_SERVICE_NAME: delivery-service
+      NO_DRIVERS: ${NO_DRIVERS:-false}
     healthcheck:
       test:
         - CMD
