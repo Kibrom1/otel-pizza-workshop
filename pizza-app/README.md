@@ -27,6 +27,13 @@ A pizza ordering system built from three microservices and a web frontend.
 
 ## Running the App
 
+Create your `.env` first, so the services know where to send telemetry:
+
+```bash
+cp .env.template .env
+# then fill in DASH0_AUTH_TOKEN and DASH0_ENDPOINT
+```
+
 ```bash
 docker compose up
 ```
@@ -54,6 +61,45 @@ One service on its own:
 ```bash
 docker compose logs -f kitchen-service
 ```
+
+## Watching What Happens in Dash0
+
+The three Node services are instrumented with OpenTelemetry without any
+tracing code in the application. Each one starts as
+
+```
+node --require @opentelemetry/auto-instrumentations-node/register index.js
+```
+
+which patches Express, the HTTP client and Pino at load time, and exports
+traces, metrics and logs to the endpoint in `.env`.
+
+What shows up in Dash0:
+
+- **Traces.** One trace per order, starting at `POST /order` in
+  `order-service` and containing the calls it makes to `kitchen-service`
+  (`/check-availability`, `/cook`) and `delivery-service`
+  (`/assign-driver`), with status and duration for every hop.
+- **Logs.** The existing Pino output, with `trace_id` and `span_id` attached,
+  so the log lines for an order are linked to its trace.
+- **Metrics.** Request rate, error rate and latency per service, plus Node.js
+  runtime metrics.
+
+The three services appear as `order-service`, `kitchen-service` and
+`delivery-service` in the namespace `pizza-app`.
+
+The browser frontend is not instrumented; traces begin when the order reaches
+`order-service`.
+
+If nothing arrives in Dash0, check the startup output of a service:
+
+```bash
+docker compose logs order-service | head
+```
+
+`OpenTelemetry automatic instrumentation started successfully` means the SDK
+is loaded. Export failures (a wrong endpoint, a rejected token) are printed
+as errors on the same stream.
 
 ## Failure Modes You Can Switch On
 
